@@ -1,0 +1,62 @@
+# transactions' amounts and fees
+let betAmount = 100000000
+let dataTxFee = 10000000
+let payoutFee = 500000
+
+# interval of the allowed height increase
+let minHeightDiff = 55
+let maxHeightDiff = 65
+
+# this account's address
+let me = tx.sender
+
+# extract the current height to get money from this account's state
+let heightToGetMoney = extract(getInteger(me, "heightToGetMoney"))
+
+match (tx) {
+    case  t:DataTransaction =>
+        # extract the provided height to get money from the DataTransaction
+        let newHeightToGetMoney = extract(getInteger(t.data, "heightToGetMoney"))
+        # extract the payment transaction's id from the DataTransaction
+        let paymentTxId = extract(getString(t.data, "lastPayment"))
+        # extract the provided payment transaction from the blockchain
+        let paymentTx = transactionById(fromBase58String(paymentTxId))
+        match (paymentTx)
+        {
+            case paymentTx : TransferTransaction =>
+                # check if the game has not ended yet
+                height < heightToGetMoney
+                # check if the payment transaction was not used before (to prevent double-spending)
+                && !isDefined(getString(me, paymentTxId))
+                # check if the payment recipient is this account
+                && paymentTx.recipient == me
+                # check if the transfer amount exceeds the required minimum
+                && paymentTx.amount >= betAmount + dataTxFee
+                # check if the transferred asset is WAVES
+                && !isDefined(paymentTx.assetId)
+                # check if (heightToGetMoney - height) is in range [minHeightDiff, maxHeightDiff]
+                && (newHeightToGetMoney - height) > minHeightDiff && (newHeightToGetMoney - height) < maxHeightDiff
+                # check if the data satisfies the specified format
+                && size(t.data) == 3 && isDefined(getString(t.data, paymentTxId))
+                # check if the DataTransaction is signed by the payment's sender
+                && sigVerify(t.bodyBytes, t.proofs[0], paymentTx.senderPublicKey)
+                # check if the fee is correct
+                && t.fee == dataTxFee
+            case _ => false
+        }
+    case payout : TransferTransaction =>
+        # extract the winner's transaction from the blockchain
+        let lastPaymentTx = transactionById(fromBase58String(extract(getString(me, "lastPayment"))))
+        match (lastPaymentTx)
+        {
+            case lastPaymentTx : TransferTransaction =>
+                # check if the game has ended
+                height >= heightToGetMoney
+                # check if the receiver is the winner
+                && lastPaymentTx.sender == payout.recipient
+                # check if the fee is correct
+                && payout.fee == payoutFee && !isDefined(payout.feeAssetId)
+            case _ => false
+        }
+    case _ => false
+}
