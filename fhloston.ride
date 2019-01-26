@@ -41,7 +41,7 @@ match (tx) {
                 # check if the DataTransaction is signed by the payment's sender
                 && sigVerify(t.bodyBytes, t.proofs[0], paymentTx.senderPublicKey)
                 # check if the fee is correct
-                && t.fee == dataTxFee
+                && t.fee >= dataTxFee
             case _ => false
         }
     case payout : TransferTransaction =>
