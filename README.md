@@ -1,11 +1,11 @@
-## Smart script is located in file fhloston.ride
+## Smart script is located in file fhloston-2.ride
 
 ## Credentials for game smart account:
 ### Seed: 
-`apart flight entire ankle outdoor divide urge october rain name mass dizzy tenant hedgehog misery`
+`supply control chat raccoon chronic phrase level flip coast guess leaf unit swing dose double`
 ### Address: 
-`3P9QNCmT3Q44zRYXBwKN3azBta9azGqrscm`
+`3P7qcbeYEnD9B7GPHwkhNv2pmDZTiYwVDLw`
 ### Private key: 
-`HAjYT2vhgcwTP4MmaCCKFgNmUuqtm98LQ6Hq9RwhFsgp`
+`YnuT613AHFzSX7FQQQEDpa1xy6TYjMaxbuvVKgN87n4`
 ### Public key: 
-`J48ygzZLEdcR2GbWjjy9eFJDs57Poz6ZajGEyygSMV26`
+`A3WZZxdC5gZa4mJCLe9Wk3XAnomn1Kvov9rrJ6MPhu4x`
