@@ -1,0 +1,115 @@
+let minBetAmount = 100000000
+let minFee = 500000
+
+
+let minHeightDiff = 13 
+let maxHeightDiff = 17 
+
+let blocksOnGameStart = 1444767
+let blocksPerRound = 1440
+let blocksPerCompetition = 1240
+
+
+let offset = height - blocksOnGameStart
+let roundNum = offset / blocksPerRound
+let roundHeight = offset % blocksPerRound
+let roundHeightStart = roundNum * blocksPerRound + blocksOnGameStart
+let roundCompetitionEnd = roundHeightStart + blocksPerCompetition
+
+
+let SELF = tx.sender
+
+
+let heightToGetMoney = extract(getInteger(SELF, "heightToGetMoney"))
+
+
+let isWithdrawByWin = height >= heightToGetMoney && heightToGetMoney > roundHeightStart
+let isWithdrawByTime = roundHeight > blocksPerCompetition
+let isWithdraw = isWithdrawByWin || isWithdrawByTime
+let isCompetition = !isWithdraw
+
+match (tx) {
+    case dtx: DataTransaction =>
+        
+        let newHeightToGetMoney = extract(getInteger(dtx.data, "heightToGetMoney"))
+
+        
+        let paymentTxId = extract(getString(dtx.data, "lastPayment"))
+        let paymentTxIdVec = fromBase58String(paymentTxId)
+
+        
+        let paymentTx = transactionById(paymentTxIdVec)
+
+        let paymentTxHeight = extract(transactionHeightById(paymentTxIdVec))
+
+        
+        let newHeightToGetMoneyValid =
+            if (height + minHeightDiff >= roundCompetitionEnd) then (
+                
+                newHeightToGetMoney <= roundCompetitionEnd
+            ) else (
+                (newHeightToGetMoney - height) > minHeightDiff && (newHeightToGetMoney - height) < maxHeightDiff && newHeightToGetMoney <= roundCompetitionEnd
+            )
+
+        match (paymentTx)
+        {
+            case paymentTx: TransferTransaction =>
+                
+                let offsetValid = offset >= 0
+                
+                let paymentFromCurrentRound = paymentTxHeight >= roundHeightStart && paymentTxHeight < roundCompetitionEnd
+                
+                let paymentNotUsedBefore = !isDefined(getString(SELF, paymentTxId))
+                
+                let paymentRecipientValid = paymentTx.recipient == SELF
+                
+                let paymentAmountValid = paymentTx.amount >= minBetAmount + minFee
+                
+                let paymentAssetValid = !isDefined(paymentTx.assetId)
+                
+                let dataFormatValid = size(dtx.data) == 3 && isDefined(getString(dtx.data, paymentTxId))
+                
+                let sigValid = sigVerify(dtx.bodyBytes, dtx.proofs[0], paymentTx.senderPublicKey)
+                
+                let feeValid = dtx.fee >= minFee && dtx.fee <= paymentTx.amount - minBetAmount
+
+                offsetValid
+                    && isCompetition 
+                    && paymentFromCurrentRound
+                    && paymentNotUsedBefore
+                    && paymentRecipientValid
+                    && paymentAmountValid
+                    && paymentAssetValid
+                    && newHeightToGetMoneyValid
+                    && dataFormatValid
+                    && sigValid
+                    && feeValid
+            case _ => false
+        }
+    case payout: TransferTransaction =>
+        
+        let lastPaymentTx = transactionById(fromBase58String(extract(getString(SELF, "lastPayment"))))
+        match (lastPaymentTx)
+        {
+            case lastPaymentTx: TransferTransaction =>
+                
+                let offsetValid = offset >= 0
+                
+                let payoutRoundValid = heightToGetMoney > roundHeightStart
+                
+                let payoutAmountValid = payout.amount >= wavesBalance(SELF) - minFee
+                
+                let payoutRecipientValid = lastPaymentTx.sender == payout.recipient
+                
+                let payoutFeeValid = payout.fee == minFee && !isDefined(payout.feeAssetId)
+
+                offsetValid
+                    && isWithdraw 
+                    && payoutRoundValid
+                    && payoutAmountValid
+                    && payoutRecipientValid
+                    && payoutFeeValid
+            case _ => false
+        }
+    case _ => false
+}
